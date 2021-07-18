@@ -58,32 +58,26 @@ def create_subkey(primary_bytes, subkey, signer_func, secret_bytes=b''):
 
     data_to_sign = primary['_to_hash'] + subkey.data_to_hash()
 
-    # Key flags: https://tools.ietf.org/html/rfc4880#section-5.2.3.21
-    if subkey.keyflag == KeyFlags.CERTIFY or \
-       subkey.keyflag == KeyFlags.SIGN    or \
-       subkey.keyflag == KeyFlags.AUTHENTICATE:
+    # Primary Key Binding Signature
+    hashed_subpackets = [
+        protocol.subpacket_time(subkey.created)]  # signature time
+    unhashed_subpackets = [
+        protocol.subpacket(16, subkey.key_id())]  # issuer key id
+    embedded_sig = protocol.make_signature(
+        signer_func=signer_func,
+        data_to_sign=data_to_sign,
+        public_algo=subkey.algo_id,
+        sig_type=0x19,
+        hashed_subpackets=hashed_subpackets,
+        unhashed_subpackets=unhashed_subpackets)
 
-        # Primary Key Binding Signature
-        hashed_subpackets = [
-            protocol.subpacket_time(subkey.created)]  # signature time
-        unhashed_subpackets = [
-            protocol.subpacket(16, subkey.key_id())]  # issuer key id
-        embedded_sig = protocol.make_signature(
-            signer_func=signer_func,
-            data_to_sign=data_to_sign,
-            public_algo=subkey.algo_id,
-            sig_type=0x19,
-            hashed_subpackets=hashed_subpackets,
-            unhashed_subpackets=unhashed_subpackets)
-
-        if subkey.keyflag == KeyFlags.CERTIFY:
-            flags = 1
-        elif subkey.keyflag == KeyFlags.SIGN:
-            flags = 2
-        elif subkey.keyflag == KeyFlags.AUTHENTICATE:
-            flags = 32 # 0x20
+    if subkey.keyflag == KeyFlags.CERTIFY:
+        flags = 1
+    elif subkey.keyflag == KeyFlags.SIGN:
+        flags = 2
+    elif subkey.keyflag == KeyFlags.AUTHENTICATE:
+        flags = 32 # 0x20
     elif subkey.keyflag == KeyFlags.ENCRYPT:
-        embedded_sig = None
         flags = (4 | 8)
 
     # Subkey Binding Signature
