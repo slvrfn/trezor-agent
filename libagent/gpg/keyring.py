@@ -219,7 +219,7 @@ def get_keygrip(user_id, sp=subprocess):
 
 
 def gpg_version(sp=subprocess):
-    """Get a keygrip of the primary GPG key of the specified user."""
+    """Get the version of the GPG binary."""
     args = gpg_command(['--version'])
     output = check_output(args=args, sp=sp)
     line = output.split(b'\n')[0]  # b'gpg (GnuPG) 2.1.11'
