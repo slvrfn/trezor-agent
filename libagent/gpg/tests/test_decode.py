@@ -65,7 +65,7 @@ def test_load_by_keygrip_missing():
 def test_load_by_keygrip():
     # contrib/trezor_agent_recover.py --identity "test@example.com" --timestamp 0 --mnemonic "all all all all all all all all all all all all"
     with open(os.path.join(cwd, "49717CC09A348E5DAAF345903784A7264F609C5F.gpg"), 'rb') as f:
-        
+
         # Primary Key
         p_kg = binascii.unhexlify("930E34F72D88B9BF4FA5372D7ED493D0DC738DAD")
         data, uids, keyflag = decode.load_by_keygrip(f.read(), p_kg)
@@ -97,5 +97,3 @@ def test_load_by_keygrip():
 
         assert data['keygrip'] == e_kg
         assert keyflag == 12 # 0x4 | 0x8
-        
-test_load_by_keygrip()
