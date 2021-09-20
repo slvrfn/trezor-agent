@@ -181,7 +181,8 @@ def parse_config(contents):
     """Parse config file into a list of Identity objects."""
     for identity_str, curve_name in re.findall(r'\<(.*?)\|(.*?)\>', contents):
         yield device.interface.Identity(identity_str=identity_str,
-                                        curve_name=curve_name)
+                                        curve_name=curve_name,
+                                        keyflag=KeyFlags.AUTHENTICATE)
 
 
 def import_public_keys(contents):
@@ -267,7 +268,7 @@ def main(device_type):
         identities = list(parse_config(contents))
     else:
         identities = [device.interface.Identity(
-            identity_str=args.identity, curve_name=args.ecdsa_curve_name)]
+            identity_str=args.identity, curve_name=args.ecdsa_curve_name, keyflag=KeyFlags.AUTHENTICATE)]
     for index, identity in enumerate(identities):
         identity.identity_dict['proto'] = u'ssh'
         log.info('identity #%d: %s', index, identity.to_string())
