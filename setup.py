@@ -16,8 +16,6 @@ setup(
         'libagent.ssh',
     ],
     install_requires=[
-        'bech32>=1.2.0',
-        'cryptography>=3.4.6',
         'docutils>=0.14',
         'python-daemon>=2.3.0',
         'wheel>=0.32.3',

@@ -118,7 +118,7 @@ def parse_pubkey(blob):
 
 def _decompress_ed25519(pubkey):
     """Load public key from the serialized blob (stripping the prefix byte)."""
-    if pubkey[:1] in {b'\x00', b'\x01'}:
+    if pubkey[:1] == b'\x00':
         # set by Trezor fsm_msgSignIdentity() and fsm_msgGetPublicKey()
         return nacl.signing.VerifyKey(pubkey[1:], encoder=nacl.encoding.RawEncoder)
     else:
