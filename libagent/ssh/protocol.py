@@ -144,10 +144,6 @@ class Handler:
             signature = self.conn.sign(blob=blob, identity=key['identity'])
         except IOError:
             return failure()
-        except Exception:
-            log.exception('signature with "%s" key failed', label)
-            raise
-
         log.debug('signature: %r', signature)
 
         try:

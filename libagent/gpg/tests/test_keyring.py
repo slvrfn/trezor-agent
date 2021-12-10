@@ -53,14 +53,6 @@ class FakeSocket:
         self.tx.write(data)
 
 
-def mock_subprocess(output, error=b''):
-    sp = mock.Mock(spec=['Popen', 'PIPE'])
-    p = mock.Mock(spec=['communicate'])
-    sp.Popen.return_value = p
-    p.communicate.return_value = (output, error)
-    return sp
-
-
 def test_sign_digest():
     sock = FakeSocket()
     sock.rx.write(b'OK Pleased to meet you, process XYZ\n')
@@ -69,8 +61,10 @@ def test_sign_digest():
     sock.rx.seek(0)
     keygrip = '1234'
     digest = b'A' * 32
+    sp = mock.Mock(spec=['check_output'])
+    sp.check_output.return_value = '/dev/pts/0'
     sig = keyring.sign_digest(sock=sock, keygrip=keygrip,
-                              digest=digest, sp=mock_subprocess('/dev/pts/0'),
+                              digest=digest, sp=sp,
                               environ={'DISPLAY': ':0'})
     assert sig == (0x30313233343536373839414243444546,)
     assert sock.tx.getvalue() == b'''RESET
@@ -91,7 +85,8 @@ def test_iterlines():
 
 
 def test_get_agent_sock_path():
-    sp = mock_subprocess(b'''sysconfdir:/usr/local/etc/gnupg
+    sp = mock.Mock(spec=['check_output'])
+    sp.check_output.return_value = b'''sysconfdir:/usr/local/etc/gnupg
 bindir:/usr/local/bin
 libexecdir:/usr/local/libexec
 libdir:/usr/local/lib/gnupg
@@ -101,6 +96,6 @@ dirmngr-socket:/run/user/1000/gnupg/S.dirmngr
 agent-ssh-socket:/run/user/1000/gnupg/S.gpg-agent.ssh
 agent-socket:/run/user/1000/gnupg/S.gpg-agent
 homedir:/home/roman/.gnupg
-''')
+'''
     expected = b'/run/user/1000/gnupg/S.gpg-agent'
     assert keyring.get_agent_sock_path(sp=sp) == expected

@@ -39,17 +39,13 @@ class FakeDevice(interface.Device):
         self.vk = self.sk.get_verifying_key()
         return self
 
-    def close(self):
-        """Close the device."""
-
-    def pubkey(self, identity, ecdh=False):
+    def pubkey(self, identity):
         """Return public key."""
         _verify_support(identity)
         data = self.vk.to_string()
         x, y = data[:32], data[32:]
         prefix = bytearray([2 + (bytearray(y)[0] & 1)])
-        pubkey = bytes(prefix) + x
-        return formats.decompress_pubkey(pubkey=pubkey, curve_name=identity.curve_name)
+        return bytes(prefix) + x
 
     def sign(self, identity, blob):
         """Sign given blob and return the signature (as bytes)."""

@@ -305,21 +305,10 @@ HASH_ALGORITHMS = {
 }
 
 
-def _parse_pubkey_packets(pubkey_bytes):
-    stream = io.BytesIO(pubkey_bytes)
-    packets_per_pubkey = []
-    for p in parse_packets(stream):
-        if p['type'] == 'pubkey':
-            # Add a new packet list for each pubkey.
-            packets_per_pubkey.append([])
-        packets_per_pubkey[-1].append(p)
-    return packets_per_pubkey
-
-
 def load_by_keygrip(pubkey_bytes, keygrip):
     """Return key, user IDs, and keyflag for specified keygrip."""
     stream = io.BytesIO(pubkey_bytes)
-    packets = list(_parse_pubkey_packets(stream))
+    packets = list(parse_packets(stream))
     packets_per_key = []
     user_ids = []
     for p in packets:
@@ -358,15 +347,6 @@ def load_by_keygrip(pubkey_bytes, keygrip):
                 return p, user_ids, mapping[keygrip]
 
     raise KeyError('{} keygrip not found'.format(util.hexlify(keygrip)))
-
-
-def iter_keygrips(pubkey_bytes):
-    """Iterate over all keygrips in this pubkey."""
-    for packets in _parse_pubkey_packets(pubkey_bytes):
-        for p in packets:
-            keygrip = p.get('keygrip')
-            if keygrip:
-                yield keygrip
 
 
 def load_signature(stream, original_data):

@@ -18,7 +18,6 @@ import subprocess
 import sys
 import time
 
-import daemon
 import pkg_resources
 import semver
 
@@ -165,7 +164,7 @@ def run_init(device_type, args):
     verify_gpg_version()
 
     # Prepare new GPG home directory for hardware-based identity
-    device_name = device_type.package_name().rsplit('-', 1)[0]
+    device_name = os.path.basename(sys.argv[0]).rsplit('-', 1)[0]
     log.info('device name: %s', device_name)
     homedir = args.homedir
     if not homedir:
@@ -269,8 +268,6 @@ def run_agent(device_type):
     p.add_argument('-v', '--verbose', default=0, action='count')
     p.add_argument('--server', default=False, action='store_true',
                    help='Use stdin/stdout for communication with GPG.')
-    p.add_argument('--daemon', default=False, action='store_true',
-                   help='Daemonize the agent.')
 
     p.add_argument('--pin-entry-binary', type=str, default='pinentry',
                    help='Path to PIN entry UI helper.')
@@ -281,15 +278,6 @@ def run_agent(device_type):
 
     args, _ = p.parse_known_args()
 
-    if args.daemon:
-        with daemon.DaemonContext():
-            run_agent_internal(args, device_type)
-    else:
-        run_agent_internal(args, device_type)
-
-
-def run_agent_internal(args, device_type):
-    """Actually run the server."""
     assert args.homedir
 
     log_file = os.path.join(args.homedir, 'gpg-agent.log')
