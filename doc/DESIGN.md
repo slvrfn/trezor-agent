@@ -6,7 +6,7 @@ SSH and GPG do this by means of a simple interprocess communication protocol (us
 
 These two agents make the connection between the front end (e.g. a `gpg --sign` command, or an `ssh user@fqdn`). And then they wait for a request from the 'front end', and then do the actual asking for a password and subsequent using the private key to sign or decrypt something.
 
-The various hardware wallets (Trezor, KeepKey and Ledger) each have the ability (as of Firmware 1.3.4) to use the NIST P-256 elliptic curve to sign, encrypt or decrypt. This curve can be used with S/MIME, GPG and SSH.
+The various hardware wallets (Trezor, KeepKey, Ledger and Jade) each have the ability (as of Firmware 1.3.4) to use the NIST P-256 elliptic curve to sign, encrypt or decrypt. This curve can be used with S/MIME, GPG and SSH.
 
 So when you `ssh` to a machine - rather than consult the normal ssh-agent (which in turn will use your private SSH key in files such as `~/.ssh/id_rsa`) -- the trezor-agent will aks your hardware wallet to use its private key to sign the challenge.
 
@@ -30,7 +30,7 @@ So taking a commmand such as:
 
 The `trezor-agent` will take the `user`@`fqdn.com`; canonicalise it (e.g. to add the ssh default port number if none was specified) and then apply some simple hashing (See [SLIP-0013 : Authentication using deterministic hierarchy][2]). The resulting 128bit hash is then used to construct a lead 'HD node' that contains an extened public private *child* key.
 
-This way they keypair is specific to the server/hostname/port and protocol combination used. And it is this private key that is used to sign the nonce passed by the SSH server (as opposed to the master key).
+This way the keypair is specific to the server/hostname/port and protocol combination used. And it is this private key that is used to sign the nonce passed by the SSH server (as opposed to the master key).
 
 The `trezor-agent` then instructs SSH to connect to the server. It will then engage in the normal challenge response process, ask the hardware wallet to blindly sign any nonce flashed by the server with the derived child private key and return this to the server. It then hands over to normal SSH for the rest of the logged in session.
 

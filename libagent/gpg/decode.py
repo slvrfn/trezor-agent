@@ -95,18 +95,20 @@ def _parse_embedded_signatures(subpackets):
             yield _parse_signature(util.Reader(stream))
 
 
+# pylint: disable=inconsistent-return-statements
 def _parse_key_id(subpackets):
     for packet in subpackets:
         data = bytearray(packet)
-        if data[0] == 16: # 0x10
+        if data[0] == 16:  # 0x10
             key_id = data[1:]
             return bytes(key_id)
 
 
+# pylint: disable=inconsistent-return-statements
 def _parse_keyflags(subpackets):
     for packet in subpackets:
         data = bytearray(packet)
-        if data[0] == 27: # 0x1B
+        if data[0] == 27:  # 0x1B
             keyflags = data[1]
             return keyflags
 
@@ -308,6 +310,21 @@ HASH_ALGORITHMS = {
 def load_by_keygrip(pubkey_bytes, keygrip):
     """Return key, user IDs, and keyflag for specified keygrip."""
     stream = io.BytesIO(pubkey_bytes)
+    packets_per_pubkey = []
+    for p in parse_packets(stream):
+        if p['type'] == 'pubkey' or \
+           p['type'] == 'subkey':
+            # Add a new packet list for each pubkey.
+            packets_per_pubkey.append([])
+        packets_per_pubkey[-1].append(p)
+    return packets_per_pubkey
+
+    for packets in packets_per_key:
+        user_ids += [p for p in packets if p['type'] == 'user_id']
+
+def load_by_keygrip(pubkey_bytes, keygrip):
+    """Return key, user IDs, and keyflag for specified keygrip."""
+    stream = io.BytesIO(pubkey_bytes)
     packets = list(parse_packets(stream))
     packets_per_key = []
     user_ids = []
@@ -327,6 +344,7 @@ def load_by_keygrip(pubkey_bytes, keygrip):
         # The key packet contains the keygrip
         # The signature packet contains the keyflag in the hashed area
         # Map them together
+        # pylint: disable=consider-using-enumerate
         mapping = {}
         for i in range(0, len(packets)):
             p = packets[i]

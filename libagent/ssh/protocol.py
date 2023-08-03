@@ -16,31 +16,33 @@ log = logging.getLogger(__name__)
 
 
 # Taken from https://github.com/openssh/openssh-portable/blob/master/authfd.h
-COMMANDS = dict(
-    SSH_AGENTC_REQUEST_RSA_IDENTITIES=1,
-    SSH_AGENT_RSA_IDENTITIES_ANSWER=2,
-    SSH_AGENTC_RSA_CHALLENGE=3,
-    SSH_AGENT_RSA_RESPONSE=4,
-    SSH_AGENT_FAILURE=5,
-    SSH_AGENT_SUCCESS=6,
-    SSH_AGENTC_ADD_RSA_IDENTITY=7,
-    SSH_AGENTC_REMOVE_RSA_IDENTITY=8,
-    SSH_AGENTC_REMOVE_ALL_RSA_IDENTITIES=9,
-    SSH2_AGENTC_REQUEST_IDENTITIES=11,
-    SSH2_AGENT_IDENTITIES_ANSWER=12,
-    SSH2_AGENTC_SIGN_REQUEST=13,
-    SSH2_AGENT_SIGN_RESPONSE=14,
-    SSH2_AGENTC_ADD_IDENTITY=17,
-    SSH2_AGENTC_REMOVE_IDENTITY=18,
-    SSH2_AGENTC_REMOVE_ALL_IDENTITIES=19,
-    SSH_AGENTC_ADD_SMARTCARD_KEY=20,
-    SSH_AGENTC_REMOVE_SMARTCARD_KEY=21,
-    SSH_AGENTC_LOCK=22,
-    SSH_AGENTC_UNLOCK=23,
-    SSH_AGENTC_ADD_RSA_ID_CONSTRAINED=24,
-    SSH2_AGENTC_ADD_ID_CONSTRAINED=25,
-    SSH_AGENTC_ADD_SMARTCARD_KEY_CONSTRAINED=26,
-)
+COMMANDS = {
+    "SSH_AGENTC_REQUEST_RSA_IDENTITIES": 1,
+    "SSH_AGENT_RSA_IDENTITIES_ANSWER": 2,
+    "SSH_AGENTC_RSA_CHALLENGE": 3,
+    "SSH_AGENT_RSA_RESPONSE": 4,
+    "SSH_AGENT_FAILURE": 5,
+    "SSH_AGENT_SUCCESS": 6,
+    "SSH_AGENTC_ADD_RSA_IDENTITY": 7,
+    "SSH_AGENTC_REMOVE_RSA_IDENTITY": 8,
+    "SSH_AGENTC_REMOVE_ALL_RSA_IDENTITIES": 9,
+    "SSH2_AGENTC_REQUEST_IDENTITIES": 11,
+    "SSH2_AGENT_IDENTITIES_ANSWER": 12,
+    "SSH2_AGENTC_SIGN_REQUEST": 13,
+    "SSH2_AGENT_SIGN_RESPONSE": 14,
+    "SSH2_AGENTC_ADD_IDENTITY": 17,
+    "SSH2_AGENTC_REMOVE_IDENTITY": 18,
+    "SSH2_AGENTC_REMOVE_ALL_IDENTITIES": 19,
+    "SSH_AGENTC_ADD_SMARTCARD_KEY": 20,
+    "SSH_AGENTC_REMOVE_SMARTCARD_KEY": 21,
+    "SSH_AGENTC_LOCK": 22,
+    "SSH_AGENTC_UNLOCK": 23,
+    "SSH_AGENTC_ADD_RSA_ID_CONSTRAINED": 24,
+    "SSH2_AGENTC_ADD_ID_CONSTRAINED": 25,
+    "SSH_AGENTC_ADD_SMARTCARD_KEY_CONSTRAINED": 26,
+    "SSH_AGENTC_EXTENSION": 27,
+    "SSH_AGENT_EXTENSION_FAILURE": 28,
+}
 
 
 def msg_code(name):
@@ -86,6 +88,7 @@ class Handler:
             msg_code('SSH_AGENTC_REQUEST_RSA_IDENTITIES'): _legacy_pubs,
             msg_code('SSH2_AGENTC_REQUEST_IDENTITIES'): self.list_pubs,
             msg_code('SSH2_AGENTC_SIGN_REQUEST'): self.sign_message,
+            msg_code('SSH_AGENTC_EXTENSION'): _unsupported_extension,
         }
 
     def handle(self, msg):
@@ -144,6 +147,10 @@ class Handler:
             signature = self.conn.sign(blob=blob, identity=key['identity'])
         except IOError:
             return failure()
+        except Exception:
+            log.exception('signature with "%s" key failed', label)
+            raise
+
         log.debug('signature: %r', signature)
 
         try:
@@ -158,3 +165,8 @@ class Handler:
         data = util.frame(util.frame(key['type']), util.frame(sig_bytes))
         code = util.pack('B', msg_code('SSH2_AGENT_SIGN_RESPONSE'))
         return util.frame(code, data)
+
+
+def _unsupported_extension(buf):  # pylint: disable=unused-argument
+    code = util.pack('B', msg_code('SSH_AGENT_EXTENSION_FAILURE'))
+    return util.frame(code)

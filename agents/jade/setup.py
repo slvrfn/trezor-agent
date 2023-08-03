@@ -2,16 +2,17 @@
 from setuptools import setup
 
 setup(
-    name='trezor_agent',
-    version='0.12.0',
-    description='Using Trezor as hardware SSH/GPG agent',
-    author='Roman Zeyde',
-    author_email='roman.zeyde@gmail.com',
+    name='jade_agent',
+    version='0.1.0',
+    description='Using Blockstream Jade as hardware SSH agent',
+    author='Jamie C. Driver',
+    author_email='jamie@blockstream.com',
     url='http://github.com/romanz/trezor-agent',
-    scripts=['trezor_agent.py'],
+    scripts=['jade_agent.py'],
     install_requires=[
-        'libagent>=0.14.0',
-        'trezor[hidapi]>=0.12.0,<0.13'
+        'libagent>=0.14.5',
+        # Jade py api from github source, v0.1.37
+        'jadepy[requests] @ git+https://github.com/Blockstream/Jade.git@0.1.37'
     ],
     platforms=['POSIX'],
     classifiers=[
@@ -22,10 +23,10 @@ setup(
         'Intended Audience :: System Administrators',
         'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
         'Operating System :: POSIX',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: System :: Networking',
         'Topic :: Communications',
@@ -33,10 +34,8 @@ setup(
         'Topic :: Utilities',
     ],
     entry_points={'console_scripts': [
-        'trezor-agent = trezor_agent:ssh_agent',
-        'trezor-gpg = trezor_agent:gpg_tool',
-        'trezor-gpg-agent = trezor_agent:gpg_agent',
-        'trezor-signify = trezor_agent:signify_tool',
-        'age-plugin-trezor = trezor_agent:age_tool',  # see https://github.com/str4d/rage/blob/main/age-plugin/README.md
+        'jade-agent = jade_agent:ssh_agent',
+        'jade-gpg = jade_agent:gpg_tool',
+        'jade-gpg-agent = jade_agent:gpg_agent',
     ]},
 )

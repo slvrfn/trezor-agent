@@ -3,6 +3,7 @@ import base64
 import hashlib
 import io
 import logging
+from enum import IntEnum
 
 from enum import IntEnum
 
@@ -27,8 +28,10 @@ SSH_NIST256_DER_OCTET = b'\x04'
 SSH_NIST256_KEY_PREFIX = b'ecdsa-sha2-'
 SSH_NIST256_CURVE_NAME = b'nistp256'
 SSH_NIST256_KEY_TYPE = SSH_NIST256_KEY_PREFIX + SSH_NIST256_CURVE_NAME
+SSH_NIST256_CERT_POSTFIX = b'-cert-v01@openssh.com'
+SSH_NIST256_CERT_TYPE = SSH_NIST256_KEY_TYPE + SSH_NIST256_CERT_POSTFIX
 SSH_ED25519_KEY_TYPE = b'ssh-ed25519'
-SUPPORTED_KEY_TYPES = {SSH_NIST256_KEY_TYPE, SSH_ED25519_KEY_TYPE}
+SUPPORTED_KEY_TYPES = {SSH_NIST256_KEY_TYPE, SSH_NIST256_CERT_TYPE, SSH_ED25519_KEY_TYPE}
 
 hashfunc = hashlib.sha256
 
@@ -48,6 +51,27 @@ def keyflag_to_index(keyflag):
         KeyFlags.CERTIFY_AND_SIGN: 0 # SLIP 13
     }[keyflag]
 
+class KeyFlags(IntEnum):
+    """Flags indicating a key's purpose."""
+
+    CERTIFY = 1
+    SIGN = 2
+    ENCRYPT = 12  # (4|8)
+    AUTHENTICATE = 32  # 0x20
+    CERTIFY_AND_SIGN = 3  # (1|2)
+
+
+def keyflag_to_index(keyflag):
+    """Convert a keyflag to an index."""
+    return {
+        KeyFlags.CERTIFY: 0,          # SLIP 13
+        KeyFlags.SIGN: 1,             # SLIP 13
+        KeyFlags.ENCRYPT: 0,          # SLIP 17
+        KeyFlags.AUTHENTICATE: 2,     # SLIP 13
+        KeyFlags.CERTIFY_AND_SIGN: 0  # SLIP 13
+    }[keyflag]
+
+
 def fingerprint(blob):
     """
     Compute SSH fingerprint for specified blob.
@@ -66,6 +90,7 @@ def parse_pubkey(blob):
     The verifier returns the signatures in the required SSH format.
     Currently, NIST256P1 and ED25519 elliptic curves are supported.
     """
+    # pylint: disable=too-many-locals
     fp = fingerprint(blob)
     s = io.BytesIO(blob)
     key_type = util.read_frame(s)
@@ -74,10 +99,27 @@ def parse_pubkey(blob):
 
     result = {'blob': blob, 'type': key_type, 'fingerprint': fp}
 
-    if key_type == SSH_NIST256_KEY_TYPE:
+    if key_type in (SSH_NIST256_KEY_TYPE, SSH_NIST256_CERT_TYPE):
+        if key_type == SSH_NIST256_CERT_TYPE:
+            _nonce = util.read_frame(s)
+
         curve_name = util.read_frame(s)
         log.debug('curve name: %s', curve_name)
         point = util.read_frame(s)
+
+        if key_type == SSH_NIST256_CERT_TYPE:
+            _serial_number = util.recv(s, '>Q')
+            _type = util.recv(s, '>L')
+            _key_id = util.read_frame(s)
+            _valid_principals = util.read_frame(s)
+            _valid_after = util.recv(s, '>Q')
+            _valid_before = util.recv(s, '>Q')
+            _critical_options = util.read_frame(s)
+            _extensions = util.read_frame(s)
+            _reserved = util.read_frame(s)
+            _signature_key = util.read_frame(s)
+            _signature = util.read_frame(s)
+
         assert s.read() == b''
         _type, point = point[:1], point[1:]
         assert _type == SSH_NIST256_DER_OCTET
@@ -118,7 +160,7 @@ def parse_pubkey(blob):
 
 def _decompress_ed25519(pubkey):
     """Load public key from the serialized blob (stripping the prefix byte)."""
-    if pubkey[:1] == b'\x00':
+    if pubkey[:1] in {b'\x00', b'\x01'}:
         # set by Trezor fsm_msgSignIdentity() and fsm_msgGetPublicKey()
         return nacl.signing.VerifyKey(pubkey[1:], encoder=nacl.encoding.RawEncoder)
     else:
