@@ -16,7 +16,6 @@ import daemon
 import pkg_resources
 
 from .. import device, formats, server, util
-from ..formats import KeyFlags
 from . import client, protocol
 from ..formats import KeyFlags
 
@@ -140,9 +139,9 @@ def serve(handler, sock_path, timeout=UNIX_SOCKET_TIMEOUT):
         handle_conn = functools.partial(server.handle_connection,
                                         handler=handler,
                                         mutex=device_mutex)
-        kwargs = {'sock': sock,
-                  'handle_conn': handle_conn,
-                  'quit_event': quit_event}
+        kwargs = dict(sock=sock,
+                      handle_conn=handle_conn,
+                      quit_event=quit_event)
         with server.spawn(server.server_thread, kwargs):
             try:
                 yield environ
@@ -184,7 +183,7 @@ def parse_config(contents):
     for identity_str, curve_name in re.findall(r'\<(.*?)\|(.*?)\>', contents):
         yield device.interface.Identity(identity_str=identity_str,
                                         curve_name=curve_name,
-                                        keyflag=KeyFlags.CERTIFY_AND_SIGN)
+                                        keyflag=KeyFlags.AUTHENTICATE)
 
 
 def import_public_keys(contents):
@@ -270,8 +269,7 @@ def main(device_type):
         identities = list(parse_config(contents))
     else:
         identities = [device.interface.Identity(
-            identity_str=args.identity, curve_name=args.ecdsa_curve_name,
-            keyflag=KeyFlags.CERTIFY_AND_SIGN)]
+            identity_str=args.identity, curve_name=args.ecdsa_curve_name, keyflag=KeyFlags.AUTHENTICATE)]
     for index, identity in enumerate(identities):
         identity.identity_dict['proto'] = u'ssh'
         log.info('identity #%d: %s', index, identity.to_string())

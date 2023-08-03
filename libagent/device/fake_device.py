@@ -39,9 +39,6 @@ class FakeDevice(interface.Device):
         self.vk = self.sk.get_verifying_key()
         return self
 
-    def close(self):
-        """Close the device."""
-
     def pubkey(self, identity):
         """Return public key."""
         _verify_support(identity)

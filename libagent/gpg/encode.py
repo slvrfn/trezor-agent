@@ -3,7 +3,6 @@ import io
 import logging
 
 from .. import util
-from ..formats import KeyFlags
 from . import decode, keyring, protocol
 from ..formats import KeyFlags
 
@@ -13,7 +12,7 @@ log = logging.getLogger(__name__)
 def create_primary(user_id, pubkey, signer_func, secret_bytes=b''):
     """Export new primary GPG public key, ready for "gpg2 --import"."""
     pubkey_packet = protocol.packet(tag=(5 if secret_bytes else 6),
-                                    blob=pubkey.data() + secret_bytes)
+                                    blob=(pubkey.data() + secret_bytes))
     user_id_bytes = user_id.encode('utf-8')
     user_id_packet = protocol.packet(tag=13, blob=user_id_bytes)
     data_to_sign = (pubkey.data_to_hash() + user_id_packet[:1] +
@@ -53,7 +52,7 @@ def create_primary(user_id, pubkey, signer_func, secret_bytes=b''):
 def create_subkey(primary_bytes, subkey, signer_func, cross_signer_func=None, secret_bytes=b''):
     """Export new subkey to GPG primary key."""
     subkey_packet = protocol.packet(tag=(7 if secret_bytes else 14),
-                                    blob=subkey.data() + secret_bytes)
+                                    blob=(subkey.data() + secret_bytes))
     packets = list(decode.parse_packets(io.BytesIO(primary_bytes)))
     primary, user_id, signature = packets[:3]
 
@@ -63,7 +62,7 @@ def create_subkey(primary_bytes, subkey, signer_func, cross_signer_func=None, se
 
         # Primary Key Binding Signature
         hashed_subpackets = [
-            protocol.subpacket_time(subkey.created + 1),  # signature time
+            protocol.subpacket_time(subkey.created + 1), # signature time
             protocol.subpacket_bytes(33, b'\x04' + subkey.fingerprint())
         ]
         unhashed_subpackets = [

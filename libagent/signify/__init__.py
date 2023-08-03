@@ -1,21 +1,29 @@
-"""TREZOR support for Ed25519 signify/minisign signatures."""
+"""TREZOR support for Ed25519 signify signatures."""
 
 import argparse
 import binascii
+import contextlib
+import functools
 import hashlib
 import logging
+import os
+import re
+import struct
+import subprocess
 import sys
 import time
 
-from .. import util
+import pkg_resources
+import semver
+
+from .. import formats, server, util
 from ..device import interface, ui
-from ..formats import KeyFlags
 
 log = logging.getLogger(__name__)
 
 
-def _create_identity(user_id, keyflag):
-    result = interface.Identity(identity_str='signify://', curve_name='ed25519', keyflag=keyflag)
+def _create_identity(user_id):
+    result = interface.Identity(identity_str='signify://', curve_name='ed25519')
     result.identity_dict['host'] = user_id
     return result
 
@@ -30,7 +38,7 @@ class Client:
     def pubkey(self, identity):
         """Return public key as VerifyingKey object."""
         with self.device:
-            return bytes(self.device.pubkey(identity=identity))
+            return bytes(self.device.pubkey(ecdh=False, identity=identity))
 
     def sign_with_pubkey(self, identity, data):
         """Sign the data and return a signature."""
@@ -45,14 +53,10 @@ class Client:
             return sig, pubkey[1:]
 
 
-ALG_SIGNIFY = b'Ed'
-ALG_MINISIGN = b'ED'  # prehashes the data before signing
-
-
-def format_payload(pubkey, data, sig_alg):
+def format_payload(pubkey, data):
     """See http://www.openbsd.org/papers/bsdcan-signify.html for details."""
     keynum = hashlib.sha256(pubkey).digest()[:8]
-    return binascii.b2a_base64(sig_alg + keynum + data).decode("ascii")
+    return binascii.b2a_base64(b"Ed" + keynum + data).decode("ascii")
 
 
 def run_pubkey(device_type, args):
@@ -62,36 +66,23 @@ def run_pubkey(device_type, args):
                 'so please note that the key derivation, API, and features '
                 'may change without backwards compatibility!')
 
-    identity = _create_identity(user_id=args.user_id, keyflag=KeyFlags.CERTIFY_AND_SIGN)
+    identity = _create_identity(user_id=args.user_id)
     pubkey = Client(device=device_type()).pubkey(identity=identity)
     comment = f'untrusted comment: identity {identity.to_string()}\n'
-    payload = format_payload(pubkey=pubkey, data=pubkey, sig_alg=ALG_SIGNIFY)
-    print(comment + payload, end="")
+    result = comment + format_payload(pubkey=pubkey, data=pubkey)
+    print(result, end="")
 
 
 def run_sign(device_type, args):
-    """Prehash & sign an input blob using Ed25519."""
+    """Sign an input blob using Ed25519."""
     util.setup_logging(verbosity=args.verbose)
-    identity = _create_identity(user_id=args.user_id, keyflag=KeyFlags.CERTIFY_AND_SIGN)
-
-    data_to_sign = sys.stdin.buffer.read()
-    sig_alg = ALG_SIGNIFY
-    if args.prehash:
-        # See https://github.com/jedisct1/minisign/commit/6e1023d20758b6fdb2a4b697213b0bf608ba4020
-        # Released in https://github.com/jedisct1/minisign/releases/tag/0.6
-        sig_alg = ALG_MINISIGN
-        data_to_sign = hashlib.blake2b(data_to_sign).digest()
-
-    sig, pubkey = Client(device=device_type()).sign_with_pubkey(identity, data_to_sign)
-    pubkey_str = format_payload(pubkey=pubkey, data=pubkey, sig_alg=sig_alg)
-    sig_str = format_payload(pubkey=pubkey, data=sig, sig_alg=sig_alg)
-    untrusted_comment = f'untrusted comment: pubkey {pubkey_str}'
-    print(untrusted_comment + sig_str, end="")
-
-    comment_to_sign = sig + args.comment.encode()
-    sig, _ = Client(device=device_type()).sign_with_pubkey(identity, comment_to_sign)
-    sig_str = binascii.b2a_base64(sig).decode("ascii")
-    print(f'trusted comment: {args.comment}\n' + sig_str, end="")
+    identity = _create_identity(user_id=args.user_id)
+    data = sys.stdin.buffer.read()
+    sig, pubkey = Client(device=device_type()).sign_with_pubkey(identity, data)
+    pubkey_str = format_payload(pubkey=pubkey, data=pubkey)
+    comment = f'untrusted comment: pubkey {pubkey_str}'
+    result = comment + format_payload(pubkey=pubkey, data=sig)
+    print(result, end="")
 
 
 def main(device_type):
@@ -109,8 +100,6 @@ def main(device_type):
     p = subparsers.add_parser('sign')
     p.add_argument('user_id')
     p.add_argument('-v', '--verbose', default=0, action='count')
-    p.add_argument('-c', '--comment', default=time.asctime())
-    p.add_argument('-H', '--prehash', default=False, action='store_true')
     p.set_defaults(func=run_sign)
 
     args = parser.parse_args()

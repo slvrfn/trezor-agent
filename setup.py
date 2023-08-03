@@ -3,22 +3,19 @@ from setuptools import setup
 
 setup(
     name='libagent',
-    version='0.14.7',
+    version='0.14.2',
     description='Using hardware wallets as SSH/GPG agent',
     author='Roman Zeyde',
     author_email='roman.zeyde@gmail.com',
     url='http://github.com/romanz/trezor-agent',
     packages=[
         'libagent',
-        'libagent.age',
         'libagent.device',
         'libagent.gpg',
         'libagent.signify',
         'libagent.ssh',
     ],
     install_requires=[
-        'bech32>=1.2.0',
-        'cryptography>=3.4.6',
         'docutils>=0.14',
         'wheel>=0.32.3',
         'backports.shutil_which>=3.5.1',
@@ -34,7 +31,7 @@ setup(
     platforms=['POSIX'],
     classifiers=[
         'Environment :: Console',
-        'Development Status :: 5 - Production/Stable',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'Intended Audience :: Information Technology',
         'Intended Audience :: System Administrators',

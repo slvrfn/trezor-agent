@@ -11,7 +11,6 @@ import ecdsa
 import nacl.signing
 import unidecode
 
-from ..formats import KeyFlags
 from . import interface
 from ..formats import KeyFlags
 
@@ -162,35 +161,35 @@ class OnlyKey(interface.Device):
                 else:
                     vk = ecdsa.VerifyingKey.from_string(ok_pubkey, curve=ecdsa.SECP256k1)
                 return vk
-
-        ok_pubkey = []
-        while time.time() < t_end:
-            try:
-                ok_pub_part = self.ok.read_bytes(timeout_ms=100)
-                if len(ok_pub_part) == 64 and len(set(ok_pub_part[0:63])) != 1:
-                    log.info('received part= %s', repr(ok_pub_part))
-                    ok_pubkey += ok_pub_part
-                    # Todo know RSA type to know how many packets
-            except Exception as e:
-                raise interface.DeviceError(e)
-
-        log.info('received= %s', repr(ok_pubkey))
-        if len(ok_pubkey) == 256:
-            # https://security.stackexchange.com/questions/42268/how-do-i-get-the-rsa-bit-length-with-the-pubkey-and-openssl
-            ok_pubkey = b'\x00\x00\x00\x07' + b'\x73\x73\x68\x2d\x72\x73\x61' + \
-                                            b'\x00\x00\x00\x03' + b'\x01\x00\x01' + \
-                                            b'\x00\x00\x01\x01' + b'\x00' + bytes(ok_pubkey)
-            # ok_pubkey = b'\x00\x00\x00\x07' + b'\x72\x73\x61\x2d\x73\x68\x61\x32\x2d\x32\x35\x
-            # 36' + b'\x00\x00\x00\x03' + b'\x01\x00\x01' + b'\x00\x00\x01\x01' + b'\x00' + byte
-            # s(ok_pubkey)
-        elif len(ok_pubkey) == 512:
-            ok_pubkey = b'\x00\x00\x00\x07' + b'\x73\x73\x68\x2d\x72\x73\x61' + \
-                                            b'\x00\x00\x00\x03' + b'\x01\x00\x01' + \
-                                            b'\x00\x00\x02\x01' + b'\x00' + bytes(ok_pubkey)
         else:
-            raise interface.DeviceError("Error response length is not a valid public key")
-        log.info('pubkey len = %s', len(ok_pubkey))
-        return ok_pubkey
+            ok_pubkey = []
+            while time.time() < t_end:
+                try:
+                    ok_pub_part = self.ok.read_bytes(timeout_ms=100)
+                    if len(ok_pub_part) == 64 and len(set(ok_pub_part[0:63])) != 1:
+                        log.info('received part= %s', repr(ok_pub_part))
+                        ok_pubkey += ok_pub_part
+                        # Todo know RSA type to know how many packets
+                except Exception as e:
+                    raise interface.DeviceError(e)
+
+            log.info('received= %s', repr(ok_pubkey))
+            if len(ok_pubkey) == 256:
+                # https://security.stackexchange.com/questions/42268/how-do-i-get-the-rsa-bit-length-with-the-pubkey-and-openssl
+                ok_pubkey = b'\x00\x00\x00\x07' + b'\x73\x73\x68\x2d\x72\x73\x61' + \
+                                                b'\x00\x00\x00\x03' + b'\x01\x00\x01' + \
+                                                b'\x00\x00\x01\x01' + b'\x00' + bytes(ok_pubkey)
+                # ok_pubkey = b'\x00\x00\x00\x07' + b'\x72\x73\x61\x2d\x73\x68\x61\x32\x2d\x32\x35\x
+                # 36' + b'\x00\x00\x00\x03' + b'\x01\x00\x01' + b'\x00\x00\x01\x01' + b'\x00' + byte
+                # s(ok_pubkey)
+            elif len(ok_pubkey) == 512:
+                ok_pubkey = b'\x00\x00\x00\x07' + b'\x73\x73\x68\x2d\x72\x73\x61' + \
+                                                b'\x00\x00\x00\x03' + b'\x01\x00\x01' + \
+                                                b'\x00\x00\x02\x01' + b'\x00' + bytes(ok_pubkey)
+            else:
+                raise interface.DeviceError("Error response length is not a valid public key")
+            log.info('pubkey len = %s', len(ok_pubkey))
+            return ok_pubkey
 
     def sign(self, identity, blob):
         """Sign given blob and return the signature (as bytes)."""
@@ -292,7 +291,7 @@ class OnlyKey(interface.Device):
 
             log.info('received= %s', repr(result))
             return bytes(result)
-        raise interface.Error('failed to sign challenge')
+        raise Exception('failed to sign challenge')
 
     def ecdh(self, identity, pubkey):
         """Get shared session key using Elliptic Curve Diffie-Hellman."""
